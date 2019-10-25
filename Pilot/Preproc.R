@@ -9,12 +9,15 @@ t<- ExtractMessages(data_list = 'D:/Data/JITTER', maxtrial = 105,   message_name
                       c('DISPLAY CHANGE STARTED', 'DISPLAY CHANGE COMPLETED'))
 
 
-save(t, file= 'Pilot/t.Rda')
-save(raw_fix, file= 'Pilot/raw_fix.Rda')
+save(t, file= 'Pilot/data/t.Rda')
+write.csv(t, 'Pilot/data/t.csv')
+save(raw_fix, file= 'Pilot/data/raw_fix.Rda')
+write.csv(raw_fix, 'Pilot/data/raw_fix.csv')
+
 
 RS<- subset(raw_fix, Rtn_sweep==1)
-save(RS, file= "Pilot/RS.Rda")
-
+save(RS, file= "Pilot/data/RS.Rda")
+write.csv(RS, "Pilot/data/RS.csv")
 
 RS$undersweep_prob<- NA
 RS$undersweep_prob[which(RS$Rtn_sweep_type=='accurate')]<- 0
