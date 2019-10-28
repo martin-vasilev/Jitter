@@ -1,7 +1,7 @@
 
 library(EMreading)
 
-#EyeDoctor_PadLines(data_dir = 'D:/Data/JITTER', paddingSize = 5)
+#EyeDoctor_PadLines(data_dir = 'D:/Data/JITTER/new', paddingSize = 5)
 
 raw_fix<- preprocFromDA1(data_dir = 'D:/Data/JITTER', maxtrial = 105, tBlink = 150, padding = 5)
 
@@ -30,3 +30,12 @@ DesRS<- melt(RS, id=c('sub', 'item', 'cond'),
 m<- cast(DesRS, cond ~ variable
               ,function(x) c(M=signif(mean(x),3)
                              , SD= sd(x) ))
+
+
+DesFD<- melt(RS, id=c('sub', 'item', 'cond', 'undersweep_prob'), 
+             measure=c("fix_dur"), na.rm=TRUE)
+m2<- cast(DesFD, cond + undersweep_prob ~ variable
+         ,function(x) c(M=signif(mean(x),3)
+                        , SD= sd(x) ))
+
+write.csv(m, 'prob.csv')
