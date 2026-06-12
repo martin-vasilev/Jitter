@@ -24,6 +24,23 @@ RS$undersweep_prob[which(RS$Rtn_sweep_type=='accurate')]<- 0
 RS$undersweep_prob[which(RS$Rtn_sweep_type=='undersweep')]<- 1
 
 
+library(tidyverse)
+
+RS$bnd<- NA
+
+for(i in 1:nrow(RS)){
+  loc<- which(t$sub== RS$sub[i]& t$item== RS$item[i])
+  
+  if(length(loc)>0){
+    RS$bnd[i]<- t$MSG2[loc]
+  }
+
+    
+}
+
+RS$bnd_time_fix<- RS$SFIX - (RS$bnd +8)
+
+
 library(reshape)
 DesRS<- melt(RS, id=c('sub', 'item', 'cond'), 
                 measure=c("undersweep_prob", 'char_line'), na.rm=TRUE)
