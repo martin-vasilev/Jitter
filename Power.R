@@ -1,7 +1,9 @@
 
 rm(list= ls())
 
-load("~/R/Jitter/Pilot/data/RS.Rda")
+RS <- read.csv("~/R/Jitter/Pilot/data/final.csv")
+RS$cond<- RS$cond.x
+RS$cond.x<- NULL
 
 library(simr)
 library(tidyverse)
@@ -18,7 +20,8 @@ RS<-RS %>%
 RS%>%
   group_by(cond)%>%
   summarise(Corr_prob= mean(corr_prob),
-            Land_pos= mean(char_line, na.rm= T))
+            Land_pos= mean(char_line, na.rm= T),
+            corr_sacc_land= mean(corr_sacc_land_char, na.rm=T))
 
 
 #RS$cond<- as.factor(RS$cond)

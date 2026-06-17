@@ -1,27 +1,104 @@
 
-library(EMreading)
+##### Old data- add corrective saccade landing:
+rm(list= ls())
 
+load("~/R/Jitter/Pilot/data/raw_fix.Rda")
+
+loc<- which(raw_fix$Rtn_sweep_type=='undersweep')
+
+raw_fix$corr_sacc_land<- NA
+raw_fix$corr_sacc_land[loc]<- raw_fix$xPos[loc+1]
+
+
+# Extract messages with line margin:
+msg<- ExtractMessages(data_list = 'C:/Users/Martin/Documents/R/Jitter/Pilot/raw', maxtrial = 105,   message_name =  
+                      'NEXT OFFSET')
+
+msg$offset<- NA
+
+for(i in 1:nrow(msg)){
+  msg$offset[i]<- as.numeric(unlist(strsplit(msg$whole_message[i], ' '))[4])
+}
+
+msg<- msg[,c(1:3,8)]
+
+library(tidyverse)
+raw_fix<- inner_join(raw_fix, msg, by= c('sub', 'item'))
+
+
+Old<- subset(raw_fix, Rtn_sweep==1)
+
+Old$Rtnsweep_land_char<- floor((Old$xPos - Old$offset)/13)
+Old$corr_sacc_land_char<- floor((Old$corr_sacc_land - Old$offset)/13)
+
+save(Old, file = 'Pilot/data/Old_RS_data.Rda')
+
+
+library(EMreading)
 #EyeDoctor_PadLines(data_dir = 'D:/Data/JITTER/new', paddingSize = 5)
 
-raw_fix<- preprocFromDA1(data_dir = 'D:/Data/JITTER', maxtrial = 105, tBlink = 150, padding = 5)
+raw_fix<- preprocFromDA1(data_dir = 'C:/Data/corr_sacc',
+                         maxtrial = 90, tBlink = 150, padding = 0)
 
-t<- ExtractMessages(data_list = 'D:/Data/JITTER', maxtrial = 105,   message_name =  
+t<- ExtractMessages(data_list = 'C:/Data/corr_sacc', maxtrial = 105,   message_name =  
                       c('DISPLAY CHANGE STARTED', 'DISPLAY CHANGE COMPLETED'))
 
 
-save(t, file= 'Pilot/data/t.Rda')
-write.csv(t, 'Pilot/data/t.csv')
-save(raw_fix, file= 'Pilot/data/raw_fix.Rda')
-write.csv(raw_fix, 'Pilot/data/raw_fix.csv')
+# save(t, file= 'Pilot/data/t.Rda')
+# write.csv(t, 'Pilot/data/t.csv')
+# save(raw_fix, file= 'Pilot/data/raw_fix.Rda')
+# write.csv(raw_fix, 'Pilot/data/raw_fix.csv')
 
 
-RS<- subset(raw_fix, Rtn_sweep==1)
-save(RS, file= "Pilot/data/RS.Rda")
-write.csv(RS, "Pilot/data/RS.csv")
+#RS_new<- subset(raw_fix, Rtn_sweep==1)
+# save(RS_new, file= "Pilot/data/RS_new.Rda")
+# write.csv(RS_new, "Pilot/data/RS_new.csv")
 
-RS$undersweep_prob<- NA
-RS$undersweep_prob[which(RS$Rtn_sweep_type=='accurate')]<- 0
-RS$undersweep_prob[which(RS$Rtn_sweep_type=='undersweep')]<- 1
+
+loc<- which(raw_fix$Rtn_sweep_type=='undersweep')
+
+raw_fix$corr_sacc_land<- NA
+raw_fix$corr_sacc_land[loc]<- raw_fix$xPos[loc+1]
+
+# Extract messages with line margin:
+msg<- ExtractMessages(data_list = 'C:/Data/corr_sacc', maxtrial = 90,   message_name =  
+                        'NEXT OFFSET')
+
+msg$offset<- NA
+
+for(i in 1:nrow(msg)){
+  msg$offset[i]<- as.numeric(unlist(strsplit(msg$whole_message[i], ' '))[4])
+}
+
+msg<- msg[,c(1:3,8)]
+
+library(tidyverse)
+raw_fix<- inner_join(raw_fix, msg, by= c('sub', 'item'))
+
+
+New<- subset(raw_fix, Rtn_sweep==1)
+
+New$Rtnsweep_land_char<- floor((New$xPos - New$offset)/18)
+New$corr_sacc_land_char<- floor((New$corr_sacc_land - New$offset)/18)
+
+
+
+New<- New[, c('sub', 'item', 'cond.x', 'Rtn_sweep_type', 'char_line', 'Rtnsweep_land_char', 'corr_sacc_land_char')]
+Old<- Old[, c('sub', 'item', 'cond.x', 'Rtn_sweep_type', 'char_line', 'Rtnsweep_land_char', 'corr_sacc_land_char')]
+
+New$sample<- "New"
+Old$sample<- "Old"
+
+New$sub<- New$sub+4
+
+final<- rbind(Old, New)
+
+
+final$undersweep_prob<- NA
+final$undersweep_prob[which(final$Rtn_sweep_type=='accurate')]<- 0
+final$undersweep_prob[which(final$Rtn_sweep_type=='undersweep')]<- 1
+
+
 
 
 library(tidyverse)
