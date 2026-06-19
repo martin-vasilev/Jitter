@@ -28,8 +28,8 @@ raw_fix<- inner_join(raw_fix, msg, by= c('sub', 'item'))
 
 Old<- subset(raw_fix, Rtn_sweep==1)
 
-Old$Rtnsweep_land_char<- floor((Old$xPos - Old$offset)/13)
-Old$corr_sacc_land_char<- floor((Old$corr_sacc_land - Old$offset)/13)
+Old$Rtnsweep_land_char<- ceiling((Old$xPos - Old$offset)/13)
+Old$corr_sacc_land_char<- ceiling((Old$corr_sacc_land - Old$offset)/13)
 
 save(Old, file = 'Pilot/data/Old_RS_data.Rda')
 
@@ -78,8 +78,8 @@ raw_fix<- inner_join(raw_fix, msg, by= c('sub', 'item'))
 
 New<- subset(raw_fix, Rtn_sweep==1)
 
-New$Rtnsweep_land_char<- floor((New$xPos - New$offset)/18)
-New$corr_sacc_land_char<- floor((New$corr_sacc_land - New$offset)/18)
+New$Rtnsweep_land_char<- ceiling((New$xPos - New$offset)/18)
+New$corr_sacc_land_char<- ceiling((New$corr_sacc_land - New$offset)/18)
 
 
 
@@ -99,6 +99,7 @@ final$undersweep_prob[which(final$Rtn_sweep_type=='accurate')]<- 0
 final$undersweep_prob[which(final$Rtn_sweep_type=='undersweep')]<- 1
 
 
+write.csv(final, 'Pilot/data/final.csv')
 
 
 library(tidyverse)
