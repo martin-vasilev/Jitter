@@ -442,6 +442,30 @@ RS<- RS %>%
 RS$DS_in_RS<- ifelse(RS$tStarted>= RS$prevEFIX & RS$tCompleted<= (RS$SFIX+10),1 ,0)
 
 
+# Extract messages with line margin:
+msg<- ExtractMessages(data_list = 'C:/Data/corr_sacc/padded',
+                      maxtrial = 90,   message_name =  
+                        'NEXT OFFSET')
+
+msg$offset<- NA
+
+for(i in 1:nrow(msg)){
+  msg$offset[i]<- as.numeric(unlist(strsplit(msg$whole_message[i], ' '))[4])
+}
+
+msg<- msg[,c(1:3,8)]
+
+library(tidyverse)
+RS<- inner_join(RS, msg, by= c('sub', 'item'))
+
+RS$Rtnsweep_land_char<- ceiling((RS$xPos - RS$offset)/18)
+RS$corr_sacc_land<- ifelse(RS$Rtn_sweep_type== "undersweep", RS$nextX, NA)
+RS$corr_sacc_land_char<- ceiling((RS$corr_sacc_land - RS$offset)/18)
+
+
+
+
+write.csv(RS, file = 'data/return-sweep_data.csv')
 
 
 
