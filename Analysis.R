@@ -6,6 +6,7 @@ rm(list= ls())
 #DV1: corrective saccade probability (Bernoulli GLMM)
 
 library(tidyverse)
+library(brms)
 
 rs  <- read.csv("data/return-sweep_data.csv")
 qst <- read.csv("data/quest.csv")              
@@ -19,13 +20,16 @@ PXC <- unname(coef(lm(xPos ~ char_line, data = l1))["char_line"])
 
 dat <- rs %>%
   transmute(
-    sub, item, cond,
+    sub, item,
+    cond= cond.x,
     corr_sacc_prob = undersweep_prob,
+    corr_sacc_land_pos= corr_sacc_land_char,
+    corrective_latency= ifelse(undersweep_prob, fix_dur, NA),
 
     #   DV2 = landStart_RS + (x_corrective - x_RS) / PXC -> the corrective saccade exceeds the character margin
-    corr_sacc_land_pos = if_else(undersweep_prob == 1,
-                                 landStart + (nextX - xPos) / PXC,
-                                 NA_real_),
+    #corr_sacc_land_pos = if_else(undersweep_prob == 1,
+    #                             landStart + (nextX - xPos) / PXC,
+    #                             NA_real_),
     
     launch_site_raw = launchSite,
     # "return-sweep landing position" covariate = line-relative
@@ -41,6 +45,7 @@ dat$cond <- factor(dat$cond, levels = c(1, 2, 3),
                    labels = c("normal", "left", "right"))
 dat$cond <- relevel(dat$cond, ref = "normal")   
 
+levels(dat$cond)
 
 #centering the covariates
 dat$launch_site <- as.numeric(scale(dat$launch_site_raw, center = TRUE, scale = FALSE))
@@ -68,8 +73,6 @@ dat$sub  <- factor(dat$sub)
 dat$item <- factor(dat$item)
 
 
-
-
 dat_prob <- dat                                            # DV1: all valid RS
 dat_land <- dat %>% filter(!is.na(corr_sacc_land_pos))     # DV2: undersweeps only
 
@@ -82,20 +85,21 @@ cat("\nP(corrective saccade) by condition (DV1):\n")
 print(dat_prob %>% group_by(cond) %>%
         summarise(p = mean(corr_sacc_prob), n = n()))
 cat("\nCorrective landing position by condition (DV2, chars):\n")
+
 print(dat_land %>% group_by(cond) %>%
         summarise(mean = mean(corr_sacc_land_pos),
                   sd = sd(corr_sacc_land_pos), n = n()))
 
 
 ##### corrective saccade probability -- Buenoulli GLMM
-library(tidyverse)
-library(brms)
 
 # 1 = control, 2 = left, 3 = right.
 
-dat_prob$cond <- factor(dat_prob$cond,
-                        levels = c("normal", "left", "right"))  # 'normal' = control
-dat_prob$cond <- relevel(dat_prob$cond, ref = "normal")
+# dat_prob$cond <- factor(dat_prob$cond,
+#                         levels = c("normal", "left", "right"))  # 'normal' = control
+# dat_prob$cond <- relevel(dat_prob$cond, ref = "normal")
+
+levels(dat_prob$cond)
 
 f_prob <- bf(corr_sacc_prob ~ cond + launch_site + land_pos +
                (cond | sub) + (cond | item))
@@ -116,19 +120,59 @@ priors_prob <- c(
 )
 
 # ---- ---------------------------------------------------------------
-m_prob <- brm(
-  formula      = f_prob,
-  data         = dat_prob,
-  family       = bernoulli(),       
-  prior        = priors_prob,
-  sample_prior = TRUE,               
-  warmup       = 1000,
-  iter         = 6000,
-  chains       = 4,
-  cores        = 4,
-  seed         = 1234,
-  control      = list(adapt_delta = 0.95)  # separation -> reduce divergences
-)
+if(file.exists('Models/m_prob.Rda')){
+  load('Models/m_prob.Rda')
+}else{
+  m_prob <- brm(
+    formula      = f_prob,
+    data         = dat_prob,
+    family       = bernoulli(),       
+    prior        = priors_prob,
+    sample_prior = TRUE,               
+    warmup       = 1000,
+    iter         = 6000,
+    chains       = 4,
+    cores        = 4,
+    seed         = 1234,
+    control      = list(adapt_delta = 0.95)  # separation -> reduce divergences
+  )
+  
+  save(m_prob,file = 'Models/m_prob.Rda')
+  
+}
+
+library(ggeffects)
+#### Bayes factors:
+
+# Note: the Bayes Factor is BH_10, so values >1 indicate evidence for the alternative, and values <1 indicate 
+# evidence in support of the null. Brms reports them the other way around, but I reverse them here because I 
+# Think BF_10 reporting is somewhat more common
+
+# Left vs Normal:
+BF1 = hypothesis(m_prob, hypothesis = 'condleft = 0', seed= 1234)
+1/BF1$hypothesis$Evid.Ratio
+
+
+# Right vs Normal:
+BF2 = hypothesis(m_prob, hypothesis = 'condright = 0', seed= 1234)
+1/BF2$hypothesis$Evid.Ratio
+
+plot(ggpredict(m_prob, terms = 'cond'))
+
+plot(ggpredict(m_prob, terms = c('land_pos', 'cond')))
+
+###### Covariates:
+# launch site:
+BF3 = hypothesis(m_prob, hypothesis = 'launch_site = 0', seed= 1234)
+1/BF3$hypothesis$Evid.Ratio
+
+# RS Land position:
+BF4 = hypothesis(m_prob, hypothesis = 'land_pos = 0', seed= 1234)
+1/BF4$hypothesis$Evid.Ratio
+
+
+
+
 
 
 summary(m_prob)                
@@ -140,9 +184,9 @@ fixef(m_prob)[c("condleft", "condright"), ]
 
 
 #####landing position -- Guassion GLMM
-
-dat_land$cond <- factor(dat_land$cond, levels = c("normal", "left", "right"))
-dat_land$cond <- relevel(dat_land$cond, ref = "normal")
+# 
+# dat_land$cond <- factor(dat_land$cond, levels = c("normal", "left", "right"))
+# dat_land$cond <- relevel(dat_land$cond, ref = "normal")
 
 f_land <- bf(corr_sacc_land_pos ~ cond + launch_site + land_pos +
                (cond | sub) + (cond | item))
@@ -157,20 +201,26 @@ priors_land <- c(
   set_prior("normal(4, 2)", class = "Intercept") 
 )
 
+if(file.existis('Models/m_land.Rda')){
+  load('Models/m_land.Rda')
+}else{
+  m_land <- brm(
+    formula      = f_land,
+    data         = dat_land,
+    family       = gaussian(),
+    prior        = priors_land,
+    sample_prior = TRUE,              
+    warmup       = 1000,
+    iter         = 6000,
+    chains       = 4,
+    cores        = 4,
+    seed         = 1234,
+    control      = list(adapt_delta = 0.95)
+  )
+  
+  save(m_land, file = 'Models/m_land.Rda')
+}
 
-m_land <- brm(
-  formula      = f_land,
-  data         = dat_land,
-  family       = gaussian(),
-  prior        = priors_land,
-  sample_prior = TRUE,              
-  warmup       = 1000,
-  iter         = 6000,
-  chains       = 4,
-  cores        = 4,
-  seed         = 1234,
-  control      = list(adapt_delta = 0.95)
-)
 
 
 summary(m_land)                 
