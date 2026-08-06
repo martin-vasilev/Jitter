@@ -12,7 +12,6 @@ rm(list= ls())
 
 library(EMreading)
 
-
 ##Question accuracy:
 quest<- Question(data_list = 'C:/Data/corr_sacc/padded',
                 maxtrial = 90)
@@ -54,7 +53,13 @@ write.csv(raw_fix, file = 'data/raw_fixations.csv')
 # DC$whole_message<- NULL
 
 
-DC<- Boundary(data_list = 'C:/Data/corr_sacc/padded', boundary_loc = 618, maxtrial = 90)
+DC<- Boundary(data_list = 'C:/Data/corr_sacc/padded', 
+              fixed_boundary = 618,
+              horizontal_boundary = F,
+              maxtrial = 90)
+
+DC$tChangetoFixOnset_VD<- DC$tChangetoFixOnset+8
+
 
 # save display change data frame:
 write.csv(DC, file = 'data/display_changes.csv')
@@ -68,6 +73,8 @@ write.csv(DC, file = 'data/display_changes.csv')
 # https://osf.io/9sngw#analysis-plan.data-exclusion
 
 #load("preproc/raw_fix.Rda")
+
+library(tidyverse)
 
 raw_fix <- read.csv("~/R/Jitter/data/raw_fixations.csv")
 
@@ -175,6 +182,12 @@ rm(raw_fix_new)
 
 
 
+### remove trials manually:
+raw_fix <- raw_fix %>%
+  filter(!(sub == 44 & seq %in% c(27, 53, 63, 64, 65)))%>%
+  filter(!(sub == 33 & seq %in% c(57, 58, 59, 60, 61, 62,63)))
+
+
 nAllTrials<- length(nsubs)*90
 
 ########################################
@@ -188,6 +201,8 @@ for(i in 1:length(nsubs)){
 nTrials
 
 # 3 trials were discarded during manual processing (due to track losses, etc.)
+
+
 
 nDiscardedTrials<- nAllTrials- sum(nTrials)
 
@@ -424,7 +439,18 @@ if(length(outsideLeft)){
 
 ###################################################
 # let's verify we have the correct number of trials:
+
+library(dplyr)
+
+raw_fix <- raw_fix %>%
+  arrange(sub, item, fix_num) %>%
+  group_by(sub, item) %>%
+  mutate(prevEFIX = lag(EFIX)) %>%
+  ungroup()
+
 RS<- subset(raw_fix, Rtn_sweep==1)
+
+
 
 nrow(RS)+ nOutliers+ nBlinks+ nNoRS+ nDiscardedTrials == nAllTrials
 
@@ -436,10 +462,17 @@ library(tidyverse)
 DC <- read_csv("data/display_changes.csv")
 
 RS<- RS %>%
-  inner_join(DC, by= c('sub', 'item', 'cond'))
+  inner_join(DC, by= c('sub', 'item', 'cond', 'seq'))
+
 
 # check display change occured within return-sweep:
-RS$DS_in_RS<- ifelse(RS$tStarted>= RS$prevEFIX & RS$tCompleted<= (RS$SFIX+10),1 ,0)
+RS$started_afterEFIX<- RS$tStarted>= RS$prevEFIX 
+
+RS$DS_in_RS<- ifelse(RS$tStarted>= RS$prevEFIX & RS$tCompleted+8<= (RS$SFIX+10),1 ,0)
+
+RS<- RS%>%
+  filter(tChangetoFixOnset_VD<=10)
+
 
 
 # Extract messages with line margin:
