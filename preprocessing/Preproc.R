@@ -56,7 +56,7 @@ write.csv(raw_fix, file = 'data/raw_fixations.csv')
 DC<- Boundary(data_list = 'C:/Data/corr_sacc/padded', 
               fixed_boundary = 618,
               horizontal_boundary = F,
-              maxtrial = 90)
+              maxtrial = 90, blink_window_ms = 300)
 
 DC$tChangetoFixOnset_VD<- DC$tChangetoFixOnset+8
 
@@ -468,10 +468,13 @@ RS<- RS %>%
 # check display change occured within return-sweep:
 RS$started_afterEFIX<- RS$tStarted>= RS$prevEFIX 
 
+# remove display changes near blinks:
+RS <- subset(RS, blinkAny== FALSE)
+
 RS$DS_in_RS<- ifelse(RS$tStarted>= RS$prevEFIX & RS$tCompleted+8<= (RS$SFIX+10),1 ,0)
 
 RS<- RS%>%
-  filter(tChangetoFixOnset_VD<=10)
+  filter(DS_in_RS==1 & tChangetoFixOnset_VD<=10)
 
 
 
